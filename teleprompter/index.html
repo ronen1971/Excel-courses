@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#000000">
 <title>טלפרומפטר</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="טלפרומפטר">
 <style>
 :root{--g:#21a366;--bg:#000;--fg:#fff;--panel:#161a18;--line:#2b332f;--muted:#9aa8a0}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -64,6 +70,7 @@ textarea{width:100%;flex:1;min-height:200px;background:var(--panel);border:1px s
   </div>
   <button class="start" id="start">התחלה ▶</button>
   <button class="sub" id="clear">ניקוי טקסט</button>
+  <button class="sub hidden" id="install">התקנה כאפליקציה במכשיר</button>
 </section>
 
 <section id="prompter" class="hidden">
@@ -102,6 +109,13 @@ textarea{width:100%;flex:1;min-height:200px;background:var(--panel);border:1px s
   $('cMirror').addEventListener('change',e=>{S.mirror=e.target.checked;save();});
   $('cCount').addEventListener('change',e=>{S.count=e.target.checked;save();});
   $('clear').addEventListener('click',()=>{if(!script.value||confirm('למחוק את הטקסט?')){script.value='';S.text='';save();}});
+
+  /* ---- PWA: offline + install ---- */
+  if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+  let deferred=null;
+  addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('install').classList.remove('hidden');});
+  $('install').addEventListener('click',async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;$('install').classList.add('hidden');});
+  addEventListener('appinstalled',()=>$('install').classList.add('hidden'));
 
   /* ---- prompter state ---- */
   let pos=0,playing=false,last=0,raf=0,wake=null,counting=false,timer=0,hintT=0;
