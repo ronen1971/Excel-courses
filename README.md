@@ -9,3 +9,7 @@ Static Hebrew landing page for Ronen Systems' digital Excel course. Site files l
 אפליקציית תרגול חינמית בתיקייה `app/` (https://ronen1971.github.io/Excel-courses/app/): 10 תרגילים אינטראקטיביים בעברית שבהם כותבים נוסחאות אמיתיות (SUM, IF, COUNTIF, SUMIF, VLOOKUP, ROUND ועוד) ומקבלים בדיקה מיידית. ההתקדמות נשמרת בדפדפן. אין תלות בספריות חיצוניות: מנוע הנוסחאות נמצא ב-`app/engine.js`.
 
 A static, dependency-free practice app: a small formula engine plus 10 guided exercises, progress saved in `localStorage`.
+
+## טלפרומפטר / Teleprompter
+
+`teleprompter/index.html`: טלפרומפטר למסך הטלפון בזמן צילום סרטון. הדביקו טקסט, קבעו גודל ומהירות, והטקסט גולל לבד. הקשה על המסך מפעילה ועוצרת, גרירה קופצת בטקסט, יש ספירה לאחור, היפוך מראה (למשקף), מסך שלא נכבה ושמירת הטקסט בדפדפן.

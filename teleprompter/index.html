@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>טלפרומפטר</title>
+<style>
+:root{--g:#21a366;--bg:#000;--fg:#fff;--panel:#161a18;--line:#2b332f;--muted:#9aa8a0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Heebo',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;overflow:hidden;overscroll-behavior:none}
+button{font:inherit;color:inherit;cursor:pointer}
+.hidden{display:none!important}
+
+/* editor */
+#editor{height:100%;overflow:auto;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));max-width:640px;margin:auto;display:flex;flex-direction:column;gap:14px}
+h1{font-size:1.5rem}
+h1 small{display:block;font-size:.85rem;color:var(--muted);font-weight:400}
+textarea{width:100%;flex:1;min-height:200px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;color:var(--fg);font:inherit;font-size:1.1rem;line-height:1.6;resize:none}
+.row{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.row label{flex:0 0 90px;font-size:.95rem}
+.row input[type=range]{flex:1;accent-color:var(--g)}
+.row output{width:36px;text-align:center;font-weight:700}
+.opts{display:flex;gap:10px;flex-wrap:wrap}
+.chk{flex:1;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:.95rem;min-width:140px}
+.chk input{width:20px;height:20px;accent-color:var(--g)}
+.start{background:var(--g);border:0;border-radius:14px;padding:16px;font-size:1.25rem;font-weight:800;color:#04170d}
+.sub{background:none;border:0;color:var(--muted);text-decoration:underline;font-size:.9rem;align-self:center}
+
+/* prompter */
+#prompter{position:fixed;inset:0;background:var(--bg)}
+#flip{position:absolute;inset:0;overflow:hidden}
+#flip.mirror{transform:scaleX(-1)}
+#content{position:absolute;top:0;left:0;right:0;padding:42vh 22px 60vh;will-change:transform;touch-action:none}
+#content p{margin-bottom:.9em;line-height:1.45;font-weight:700;unicode-bidi:plaintext;text-align:start;word-break:break-word}
+#guide{position:absolute;left:0;right:0;top:42vh;height:0;border-top:2px solid rgba(33,163,102,.7);pointer-events:none}
+#guide::before,#guide::after{content:'';position:absolute;top:-9px;border:8px solid transparent}
+#guide::before{left:0;border-left-color:var(--g)}
+#guide::after{right:0;border-right-color:var(--g)}
+#fade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(#000 0,transparent 14%,transparent 80%,#000 100%);opacity:.7}
+#count{position:absolute;inset:0;display:grid;place-items:center;font-size:35vw;font-weight:800;color:var(--g);background:rgba(0,0,0,.6);pointer-events:none}
+#bar{position:absolute;left:0;right:0;bottom:0;padding:12px 12px max(12px,env(safe-area-inset-bottom));background:rgba(22,26,24,.94);backdrop-filter:blur(6px);display:grid;gap:10px;border-top:1px solid var(--line);transition:transform .25s}
+#bar.away{transform:translateY(110%)}
+.ctl{display:flex;align-items:center;gap:8px}
+.ctl span{flex:0 0 52px;font-size:.85rem;color:var(--muted)}
+.ctl input{flex:1;accent-color:var(--g);height:32px}
+.btns{display:flex;gap:8px}
+.btns button{flex:1;background:#232a26;border:1px solid var(--line);border-radius:12px;padding:12px 4px;font-size:.95rem}
+.btns .play{background:var(--g);color:#04170d;font-weight:800;border:0;flex:1.6}
+.btns button.on{outline:2px solid var(--g)}
+#hint{position:absolute;top:max(10px,env(safe-area-inset-top));left:0;right:0;text-align:center;color:var(--muted);font-size:.85rem;pointer-events:none;transition:opacity .4s}
+</style>
+</head>
+<body>
+
+<section id="editor">
+  <h1>טלפרומפטר <small>הניחו את הטלפון ליד העדשה וקראו תוך כדי צילום</small></h1>
+  <textarea id="script" placeholder="הדביקו או הקלידו כאן את הטקסט שלכם..." aria-label="טקסט"></textarea>
+  <div class="row"><label for="rSize">גודל טקסט</label><input type="range" id="rSize" min="20" max="90" value="44"><output id="oSize"></output></div>
+  <div class="row"><label for="rSpeed">מהירות</label><input type="range" id="rSpeed" min="1" max="20" value="5"><output id="oSpeed"></output></div>
+  <div class="opts">
+    <label class="chk"><input type="checkbox" id="cMirror"> היפוך מראה (למשקף)</label>
+    <label class="chk"><input type="checkbox" id="cCount" checked> ספירה לאחור</label>
+  </div>
+  <button class="start" id="start">התחלה ▶</button>
+  <button class="sub" id="clear">ניקוי טקסט</button>
+</section>
+
+<section id="prompter" class="hidden">
+  <div id="flip"><div id="content"></div><div id="guide"></div><div id="fade"></div></div>
+  <div id="count" class="hidden"></div>
+  <div id="hint">הקישו על המסך להפעלה ולעצירה, גררו כדי לקפוץ בטקסט</div>
+  <div id="bar">
+    <div class="ctl"><span>מהירות</span><input type="range" id="bSpeed" min="1" max="20"></div>
+    <div class="ctl"><span>גודל</span><input type="range" id="bSize" min="20" max="90"></div>
+    <div class="btns">
+      <button id="bBack">חזרה</button>
+      <button id="bTop">מההתחלה</button>
+      <button id="bMirror">מראה</button>
+      <button id="bPlay" class="play">▶ הפעלה</button>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const KEY='teleprompter.v1';
+  const S={text:'',size:44,speed:5,mirror:false,count:true};
+  try{Object.assign(S,JSON.parse(localStorage.getItem(KEY))||{});}catch(e){}
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+
+  const script=$('script'),content=$('content'),flip=$('flip'),bar=$('bar'),hint=$('hint');
+  script.value=S.text;
+  $('rSize').value=S.size;$('rSpeed').value=S.speed;$('cMirror').checked=S.mirror;$('cCount').checked=S.count;
+  const sync=()=>{$('oSize').textContent=S.size;$('oSpeed').textContent=S.speed;};sync();
+
+  script.addEventListener('input',()=>{S.text=script.value;save();});
+  $('rSize').addEventListener('input',e=>{S.size=+e.target.value;sync();save();});
+  $('rSpeed').addEventListener('input',e=>{S.speed=+e.target.value;sync();save();});
+  $('cMirror').addEventListener('change',e=>{S.mirror=e.target.checked;save();});
+  $('cCount').addEventListener('change',e=>{S.count=e.target.checked;save();});
+  $('clear').addEventListener('click',()=>{if(!script.value||confirm('למחוק את הטקסט?')){script.value='';S.text='';save();}});
+
+  /* ---- prompter state ---- */
+  let pos=0,playing=false,last=0,raf=0,wake=null,counting=false,timer=0,hintT=0;
+  const maxPos=()=>Math.max(0,content.offsetHeight-innerHeight*0.7);
+  const draw=()=>{content.style.transform='translate3d(0,'+(-pos)+'px,0)';};
+
+  function loop(t){
+    if(!playing)return;
+    const dt=Math.min(.1,(t-last)/1000);last=t;
+    pos+=S.speed*S.size/6*dt;
+    const m=maxPos();
+    if(pos>=m){pos=m;setPlaying(false);}
+    draw();
+    if(playing)raf=requestAnimationFrame(loop);
+  }
+  function setPlaying(on){
+    playing=on;
+    $('bPlay').textContent=on?'❚❚ עצירה':'▶ הפעלה';
+    bar.classList.toggle('away',on);
+    if(on){last=performance.now();raf=requestAnimationFrame(loop);lock();}
+    else{cancelAnimationFrame(raf);}
+  }
+  async function lock(){try{if('wakeLock' in navigator&&!wake)wake=await navigator.wakeLock.request('screen');wake&&wake.addEventListener('release',()=>{wake=null;});}catch(e){}}
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&playing)lock();});
+
+  function render(){
+    content.innerHTML='';
+    content.style.fontSize=S.size+'px';
+    S.text.split(/\n+/).map(l=>l.trim()).filter(Boolean).forEach(l=>{
+      const p=document.createElement('p');p.dir='auto';p.textContent=l;content.appendChild(p);
+    });
+    if(!content.children.length){const p=document.createElement('p');p.textContent='(אין טקסט)';content.appendChild(p);}
+    flip.classList.toggle('mirror',S.mirror);
+    $('bMirror').classList.toggle('on',S.mirror);
+    $('bSpeed').value=S.speed;$('bSize').value=S.size;
+    pos=Math.min(pos,maxPos());draw();
+  }
+
+  function begin(){
+    if(!S.text.trim()){script.focus();return;}
+    $('editor').classList.add('hidden');$('prompter').classList.remove('hidden');
+    pos=0;render();bar.classList.remove('away');
+    hint.style.opacity=1;clearTimeout(hintT);hintT=setTimeout(()=>hint.style.opacity=0,4000);
+    try{const r=document.documentElement;if(r.requestFullscreen)r.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}catch(e){}
+    S.count?countdown(3,()=>setPlaying(true)):setPlaying(true);
+  }
+  function countdown(n,done){
+    counting=true;const c=$('count');c.classList.remove('hidden');c.textContent=n;
+    timer=setInterval(()=>{n--;if(n<=0){clearInterval(timer);c.classList.add('hidden');counting=false;done();}else c.textContent=n;},1000);
+  }
+  function cancelCount(){clearInterval(timer);$('count').classList.add('hidden');counting=false;}
+  function back(){
+    cancelCount();setPlaying(false);
+    if(wake){wake.release().catch(()=>{});wake=null;}
+    if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+    $('prompter').classList.add('hidden');$('editor').classList.remove('hidden');
+  }
+
+  $('start').addEventListener('click',begin);
+  $('bBack').addEventListener('click',back);
+  $('bPlay').addEventListener('click',()=>{if(counting){cancelCount();}setPlaying(!playing);});
+  $('bTop').addEventListener('click',()=>{pos=0;draw();});
+  $('bMirror').addEventListener('click',()=>{S.mirror=!S.mirror;$('cMirror').checked=S.mirror;save();render();});
+  $('bSpeed').addEventListener('input',e=>{S.speed=+e.target.value;$('rSpeed').value=S.speed;sync();save();});
+  $('bSize').addEventListener('input',e=>{S.size=+e.target.value;$('rSize').value=S.size;sync();save();render();});
+
+  /* tap = play/pause, drag = scrub */
+  let down=null;
+  flip.addEventListener('pointerdown',e=>{down={y:e.clientY,pos,moved:false};flip.setPointerCapture(e.pointerId);});
+  flip.addEventListener('pointermove',e=>{
+    if(!down)return;const dy=e.clientY-down.y;
+    if(Math.abs(dy)>8)down.moved=true;
+    if(down.moved){pos=Math.max(0,Math.min(maxPos(),down.pos-dy));draw();}
+  });
+  flip.addEventListener('pointerup',()=>{
+    if(down&&!down.moved){if(counting)cancelCount();setPlaying(!playing);}
+    down=null;
+  });
+  flip.addEventListener('pointercancel',()=>{down=null;});
+  flip.addEventListener('wheel',e=>{pos=Math.max(0,Math.min(maxPos(),pos+e.deltaY));draw();},{passive:true});
+  addEventListener('keydown',e=>{
+    if($('prompter').classList.contains('hidden'))return;
+    if(e.code==='Space'){e.preventDefault();setPlaying(!playing);}
+    else if(e.key==='Escape')back();
+    else if(e.key==='ArrowUp'){S.speed=Math.min(20,S.speed+1);render();sync();}
+    else if(e.key==='ArrowDown'){S.speed=Math.max(1,S.speed-1);render();sync();}
+  });
+  addEventListener('resize',()=>{if(!$('prompter').classList.contains('hidden'))render();});
+})();
+</script>
+</body>
+</html>
